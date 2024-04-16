@@ -1,158 +1,260 @@
 package tests;
 
-import com.codeborne.selenide.SelenideElement;
-import config.Props;
-import org.testng.annotations.Test;
-import pages.AdjustTable;
-import pages.LoginPage;
+import static com.codeborne.selenide.Condition.*;
+import static com.codeborne.selenide.Selenide.*;
 
-import static com.codeborne.selenide.Selenide.$$x;
-import static com.codeborne.selenide.Selenide.$x;
+import config.Props;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.junit.After;
+import org.testng.annotations.Test;
+import pages.BitrixWebTablePage;
+import pages.DeliverablesPage;
+import pages.NonShopId;
 
 public class CheckTableDataTest extends TestsSetup {
 
-    Props props = Props.props;
+  Props props = Props.props;
+  // Create a new Workbook
+  Workbook workbook = new XSSFWorkbook(); // For .xlsx format
 
-    @Test
-    public void checkLogin() {
-        new LoginPage();
-        new AdjustTable();
+  @Test
+  public void checkBitrixInstalls() {
+    String[] shopIds = {
+      "677", "506", "491", "413", "327", "329", "402", "167", "191", "616", "683", "163", "165",
+      "689", "159", "161", "225", "404", "496", "585", "615", "673", "251", "255", "249", "435",
+      "263", "265", "243", "259", "697", "261", "446", "680", "666", "610", "678"
+    };
+    ArrayList<String> shopIdList = new ArrayList<>(Arrays.asList(shopIds));
 
+    BitrixWebTablePage bwtp = new BitrixWebTablePage();
+
+    int index = 0;
+
+    // Create a Sheet
+    Sheet sheet2 = workbook.createSheet("Битрикс и Аджаст(по магазину)");
+
+    // Create a Header Row
+    Row firstExcelRow = sheet2.createRow(index);
+
+    // Create Header Cells and set their values
+    Cell bitrixEmployeeIdHeader = firstExcelRow.createCell(0);
+    bitrixEmployeeIdHeader.setCellValue("bitrix employee id");
+
+    Cell bitrixEmployeeFullNameHeader = firstExcelRow.createCell(1);
+    bitrixEmployeeFullNameHeader.setCellValue("bitrix employee full name");
+
+    Cell bitrixShopNameHeader = firstExcelRow.createCell(2);
+    bitrixShopNameHeader.setCellValue("bitrix shop name");
+
+    Cell bitrixUniqueInstallsHeader = firstExcelRow.createCell(3);
+    bitrixUniqueInstallsHeader.setCellValue("bitrix unique installs");
+
+    Cell adjustUniqueInstallsHeader = firstExcelRow.createCell(4);
+    adjustUniqueInstallsHeader.setCellValue("adjust unique installs");
+
+    for (BitrixWebTablePage.EmployeeItem bitrixEmployee : bwtp.bitrixWebTable.employee_items) {
+      System.out.println("bitrix user id: " + bitrixEmployee.user_id);
+      System.out.println("bitrix shop id: " + bitrixEmployee.shop_id);
+
+      // clicking on the shop (or city) with the id from bitrix
+      NonShopId deliverablesPageShop = new NonShopId(String.valueOf(bitrixEmployee.shop_id));
+      System.out.println(deliverablesPageShop.nonShopIdUsersTable.getRows().size());
+
+      NonShopId.Row adjustEmployee =
+          deliverablesPageShop.nonShopIdUsersTable.getRows().stream()
+              .filter(
+                  employee ->
+                      String.valueOf(employee.adgroup)
+                          .equals(String.valueOf(bitrixEmployee.user_id)))
+              .findFirst()
+              .orElse(null); // Provide a default value if no element is found
+
+      Row finalExcelRow = sheet2.createRow(index + 1);
+
+      Cell bitrixEmployeeIdCell = finalExcelRow.createCell(0);
+      bitrixEmployeeIdCell.setCellValue(String.valueOf(bitrixEmployee.user_id));
+
+      Cell bitrixEmployeeFullNameCell = finalExcelRow.createCell(1);
+      bitrixEmployeeFullNameCell.setCellValue(bitrixEmployee.full_name);
+
+      Cell bitrixShopNameCell = finalExcelRow.createCell(2);
+      bitrixShopNameCell.setCellValue(bitrixEmployee.shop);
+
+      Cell bitrixUniqueInstallsCell = finalExcelRow.createCell(3);
+      bitrixUniqueInstallsCell.setCellValue(String.valueOf(bitrixEmployee.installed_count));
+
+      Cell adjustUniqueInstallsCell = finalExcelRow.createCell(4);
+
+      if (adjustEmployee != null) {
+        System.out.println("adjust employee installs: " + adjustEmployee.install_unique_events);
+        adjustUniqueInstallsCell.setCellValue(String.valueOf(adjustEmployee.install_unique_events));
+      } else {
+        adjustUniqueInstallsCell.setCellValue("not in adjust shop");
+        System.out.println("not in adjust shop");
+      }
+
+      index += 1;
     }
-/*
-    public static void getUniqueInstalls(){
 
-        SelenideElement employeeIdRows =  $x("//div[@role='rowgroup']//div[@role='row']");
+    // Write the workbook to a file
+    try (FileOutputStream fileOut = new FileOutputStream("errors.xlsx")) {
+      workbook.write(fileOut);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
 
-        //SelenideElement rowCell = $x("//div[@role='rowgroup']//div[@role='cell']");
+  }
+  @Test
+  public void checkAdjustInstalls() {
 
-        for(SelenideElement row : rows) {
+    System.out.println("starting tests...");
 
+    DeliverablesPage dp = new DeliverablesPage();
+    List<DeliverablesPage.Row> nonShopIds = dp.deliverablesTable.getRows();
+    System.out.println("deliverables initialized");
+    System.out.println(nonShopIds.size());
+
+    int index = 0;
+
+    // Create a Sheet
+    Sheet sheet1 = workbook.createSheet("Installs по городу");
+
+    // Create a Header Row
+    Row firstExcelRow = sheet1.createRow(index);
+
+    // Create Header Cells and set their values
+    Cell nonShopIdCellHeader = firstExcelRow.createCell(0);
+    nonShopIdCellHeader.setCellValue("non shop id");
+
+    Cell employeeIdCellHeader = firstExcelRow.createCell(1);
+    employeeIdCellHeader.setCellValue("employee id");
+
+    Cell installUniqueEventsCellHeader = firstExcelRow.createCell(2);
+    installUniqueEventsCellHeader.setCellValue("installs unique");
+
+    Cell bitrixEmployeeNameHeader = firstExcelRow.createCell(3);
+    bitrixEmployeeNameHeader.setCellValue("employee name");
+
+    Cell bitrixEmployeeShopHeader = firstExcelRow.createCell(4);
+    bitrixEmployeeShopHeader.setCellValue("employee shop");
+
+    Cell bitrixShopIdHeader = firstExcelRow.createCell(5);
+    bitrixShopIdHeader.setCellValue("shop id");
+
+    Cell adjustInstallsShopIdHeader = firstExcelRow.createCell(6);
+    adjustInstallsShopIdHeader.setCellValue("adjust installs shop id");
+
+    Cell bitrixInstallUniqueEventsHeader = firstExcelRow.createCell(7);
+    bitrixInstallUniqueEventsHeader.setCellValue("install count bitrix");
+
+    BitrixWebTablePage bwtp = new BitrixWebTablePage();
+
+    for (DeliverablesPage.Row row : nonShopIds) { // row.campaign
+      System.out.println("============");
+      System.out.println(row.campaign);
+      NonShopId nid = new NonShopId(row.campaign); // row.campaign = 179
+
+      for (NonShopId.Row nidRow : nid.nonShopIdUsersTable.getRows()) {
+        System.out.println(nidRow.adgroup);
+        System.out.println(nidRow.install_unique_events);
+
+        BitrixWebTablePage.EmployeeItem bitrixEmployee =
+            bwtp.bitrixWebTable.employee_items.stream()
+                .filter(
+                    employee ->
+                        String.valueOf(employee.user_id).equals(String.valueOf(nidRow.adgroup)))
+                .findFirst()
+                .orElse(null); // Provide a default value if no element is found
+
+        // Create a Row
+        Row finalExcelRow = sheet1.createRow(index + 1);
+
+        // Create a Cell and set a value
+        Cell nonShopIdCell = finalExcelRow.createCell(0);
+        nonShopIdCell.setCellValue(row.campaign);
+
+        // nidRow.adgroup is employee Id
+        Cell employeeIdCell = finalExcelRow.createCell(1);
+        employeeIdCell.setCellValue(nidRow.adgroup);
+
+        Cell installUniqueEventsCell = finalExcelRow.createCell(2);
+        installUniqueEventsCell.setCellValue(nidRow.install_unique_events);
+
+        Cell bitrixEmployeeNameCell = finalExcelRow.createCell(3);
+        Cell bitrixEmployeeShopNameCell = finalExcelRow.createCell(4);
+        Cell bitrixShopIdCell = finalExcelRow.createCell(5);
+        Cell adjustInstallsShopIdCell = finalExcelRow.createCell(6);
+        Cell bitrixInstallUniqueEventsCell = finalExcelRow.createCell(7);
+
+        if (bitrixEmployee != null) {
+          // Proceed with the found employee
+          bitrixEmployeeNameCell.setCellValue(bitrixEmployee.full_name);
+          bitrixEmployeeShopNameCell.setCellValue(bitrixEmployee.shop);
+          bitrixShopIdCell.setCellValue(bitrixEmployee.shop_id);
+
+          // pass storeId to NonShopId constructor
+          NonShopId validUniqueInstallsObject = new NonShopId(bitrixEmployee.shop_id);
+          // employee ids, we need to filter them
+          var employeeRow =
+              validUniqueInstallsObject.nonShopIdUsersTable.getRows().stream()
+                  .filter(
+                      employee ->
+                          String.valueOf(employee.adgroup).equals(String.valueOf(nidRow.adgroup)))
+                  .findFirst()
+                  .orElse(null); // Provide a default value if no element is found
+
+          var uniqueInstalls = "not identified";
+
+          if (employeeRow != null) {
+            uniqueInstalls = employeeRow.install_unique_events;
+          }
+
+          adjustInstallsShopIdCell.setCellValue(uniqueInstalls);
+
+          bitrixInstallUniqueEventsCell.setCellValue(bitrixEmployee.installed_count);
+        } else {
+          // Handle the case where no employee is found
+          bitrixEmployeeNameCell.setCellValue("not found");
+          bitrixEmployeeShopNameCell.setCellValue("not found");
+          bitrixShopIdCell.setCellValue("not found");
+          bitrixInstallUniqueEventsCell.setCellValue("not found");
+
+          // sheet.removeRow(finalExcelRow); // Remove the row
+          // index -= 1;
         }
-    }
 
-
-/*
-    public static int getCellById(int employeeId) {
-        String employeeIdText = Integer.toString(employeeId);
-        SelenideElement employeeIdRows =  $x("//div[@role='rowgroup']//div[@role='row']");
-
-        SelenideElement rowCell = $x("//div[@role='rowgroup']//div[@role='cell']");
-
-        for (int i = 0; i < employeeIdRows.size(); i++) {
-            String employeeIdRow = employeeIdRows.get(i).getText(); //index
-            System.out.println("employeeIdText: " + employeeIdText);
-            if (employeeIdRow.equals(employeeIdText)) {
-                System.out.println("The element is found!");
-                return i;
-
-            }
-        }
-        return -1;
+        index += 1;
+      }
 
     }
 
-
-    public static int getUniqueInstall(int tableIndex) {
-        SelenideElement tableRow = tableRows.get(tableIndex);
-        SelenideElement installUniqueTableCell = tableRowData.get(5); //по факту 6, индекс -1
-        String installUniqueText = installUniqueTableCell.text();
-        return Integer.parseInt(installUniqueText);
+    // Write the workbook to a file
+    try (FileOutputStream fileOut = new FileOutputStream("errors.xlsx")) {
+      workbook.write(fileOut);
+    } catch (IOException e) {
+      e.printStackTrace();
     }
+  }
 
-/*
-    public static int getIndexByEmployeeId(int employeeId) {
-        String employeeIdText = Integer.toString(employeeId);
-        System.out.println("EmployeeId is " + employeeId);
-        ElementsCollection employeeIdRows = $$x("//*[@class='tracker-link']//span");
-        System.out.println("employeeIdRows: " + employeeIdRows.size());
-        for (int i = 0; i < employeeIdRows.size(); i++) {
-            String employeeIdRow = employeeIdRows.get(i).getText(); //index
-            System.out.println("employeeIdText: " + employeeIdText);
-            if (employeeIdRow.equals(employeeIdText)) {
-                System.out.println("The element is found!");
-                return i;
-            }
-        }
-        return -1;
-    }
+  @After
+  public void saveAndCloseWorkbook() {
 
-    public static int getInstallUnique(int tableIndex) {
-        ElementsCollection tableRows = $$x("//*[contains(@id, 'tr-value') and not(@class='tr tr-body aggregate')]");
-        System.out.println("table rows size is: " + tableRows.size());
-        SelenideElement tableRow = tableRows.get(tableIndex);
-        ElementsCollection tableRowData = tableRow.$$x(".//*[contains(@class, 'td')]");
-        System.out.println("table row data size is: " + tableRowData.size());
-	System.out.println("cell position: " + Props.props.uniqueInstallsCellPosition());
-        SelenideElement installUniqueTableCell = tableRowData.get(21);
-	System.out.println("cell: " + installUniqueTableCell);
-        String installUniqueText = installUniqueTableCell.text();
-	System.out.println("installUniqueText: " + installUniqueText);
-        return Integer.parseInt(installUniqueText);
-    }
+      try {
+        workbook.close(); // Close the workbook to release resources
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
 
-    @DataProvider(name = "results")
-    public Object[][] PrepareTestData() {
-	super.beforeEachTest();
+  }
 
-        new LoginPage();
-        new AdjustTable();
-
-        EmployeeExcel ee = new EmployeeExcel(props.inputFile());
-
-	int totalCount = ee.excelRows.size();
-        System.out.println("total count: " + totalCount);
-
-	// 3 columns that we need: employeeName,
-	// uniqueInstallsAdjust, uniqueInstallsBitrix
-	Object[][] testData = new Object[totalCount][3];
-
-        BitrixEmployeeExcel be = new BitrixEmployeeExcel(props.checkFile());
-
-        int index = 0;
-        for (EmployeeExcel.TableRow row : ee.excelRows) {  //for each row in excel table
-            System.out.println("============");
-            System.out.println(row.cityId);
-            System.out.println(row.employeeId);
-            System.out.println(row.installCount);
-            System.out.println("============");
-
-            SelenideElement shopById = $x("//a[.//span[text()='" + row.cityId + "']]");
-            shopById.click();
-            String href = shopById.getAttribute("href");
-            open(href);
-	    sleep(8000);
-
-            int indexEmployee = getIndexByEmployeeId(row.employeeId);
-            System.out.println("indexEmployee: " + indexEmployee);
-            int uniqueInstallsAdjust = getInstallUnique(indexEmployee);
-
-            int totalSumInstallUniqueExcelAdjust = uniqueInstallsAdjust + row.installCount;
-            System.out.println("total sum: " + totalSumInstallUniqueExcelAdjust);
-
-            int uniqueInstallsBitrix = be.getUniqueInstallsByEmployeeName(row.employeeName);
-
-	    System.out.println("sum from Bitrix: " + uniqueInstallsBitrix);
-
-	    testData[index][0] = row.employeeName;
-	    testData[index][1] = totalSumInstallUniqueExcelAdjust;
-	    testData[index][2] = uniqueInstallsBitrix;
-            index += 1;
-	    open("https://dash.adjust.com/#/");
-	    sleep(4000);
-	    new AdjustTable();
-        }
-
-	return testData;
-
-    }
-
-    @Test(dataProvider = "results", testName = "Check that unique installs match")
-    public void checkUniqueInstalls(String employeeName, int totalSumInstallUniqueExcelAdjust, int uniqueInstallsBitrix) {
-        assert totalSumInstallUniqueExcelAdjust == uniqueInstallsBitrix :
-                "Expected result " + employeeName + " is " + uniqueInstallsBitrix +
-                        ", but actual result is " +
-                        totalSumInstallUniqueExcelAdjust;
-    }
-*/
 }
+

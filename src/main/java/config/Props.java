@@ -38,5 +38,7 @@ public interface Props extends Reloadable {
     @Key("uniqueInstallsCellPosition")
     int uniqueInstallsCellPosition();
 
+    @Key("mainPageAdjustUrl")
+    int mainPageAdjustUrl();
 
 }
