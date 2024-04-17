@@ -1,6 +1,8 @@
 package pages;
 
 import com.google.gson.Gson;
+import config.Props;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -29,30 +31,27 @@ public class BitrixWebTablePage {
 
   public BitrixWebTablePage() {
 
+    Props props = Props.props;
     // URL to send the POST request
-    String url = "https://employee-qr.spb.lichishop.com/api/v1/statistics/employees";
+    String url = props.bitrixCurlUrl();
 
     try {
       // Create a HttpURLConnection
       connection = (HttpURLConnection) new URL(url).openConnection();
       // Set the request method to POST
-      connection.setRequestMethod("POST");
+      connection.setRequestMethod(props.bitrixCurlRequestMethod());
 
       // Set request headers
-      connection.setRequestProperty("authority", "employee-qr.spb.lichishop.com");
-      connection.setRequestProperty("accept", "*/*");
-      connection.setRequestProperty("accept-language", "en-US,en;q=0.9");
-      connection.setRequestProperty(
-          "content-type", "application/x-www-form-urlencoded; charset=UTF-8");
-      connection.setRequestProperty(
-          "cookie",
-          "USER_DATA=S3sRASJrGAt0e3ZzRlV2Dm0OYQMSBQsNJjAKDX57UCUBOyJtEgQAbnh7fnBXD3FyADgqYBZXIlttXXpLAihuYVFMd30JYVJpQ3wkdhIx");
+      connection.setRequestProperty("authority", props.bitrixCurlHeaderAuthority());
+      connection.setRequestProperty("accept", props.bitrixCurlHeaderAccept());
+      connection.setRequestProperty("accept-language", props.bitrixCurlHeaderAcceptLanguage());
+      connection.setRequestProperty("content-type", props.bitrixCurlHeaderContentType());
+      connection.setRequestProperty("cookie", props.bitrixCurlHeaderCookie());
 
       connection.setDoOutput(true);
 
       // request body
-      String requestBody =
-          "startDate=2024-4-1&endDate=2024-4-15&query=&page=1&sort=asc&offset=1000&region=";
+      String requestBody = props.bitrixCurlRequestBody();
       connection.getOutputStream().write(requestBody.getBytes());
 
       // Send the request
